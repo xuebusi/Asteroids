@@ -26,6 +26,12 @@ class GameScene: SKScene {
     var isThrustOn = false
     var isHyperSpacingOn = false
     
+    // Enemy Spaceship Properties
+    let enemy = SKSpriteNode(imageNamed: "alien-ship")
+    var isEnemyAlive = false
+    var isEnemyBig = true
+    var enemyTimer: Double = 0
+    
     // Control Properties
     private var rotation: CGFloat = 0 {
         didSet {
@@ -43,6 +49,8 @@ class GameScene: SKScene {
     override func didMove(to view: SKView) {
         setupLabelsAndButtons()
         createPlayer(atX: frame.width/2, atY: frame.height/2)
+        
+        enemyTimer = Double.random(in: 1800...7200) // at 60 FPS, this is equivalent to 30...120 seconds
     }
     
     override func update(_ currentTime: TimeInterval) {
@@ -65,6 +73,17 @@ class GameScene: SKScene {
         if player.position.y < 0 { player.position.y = frame.height }
         if player.position.x > frame.width { player.position.x = 0 }
         if player.position.x < 0 { player.position.x = frame.width }
+        
+        if isEnemyAlive == false {
+            if enemyTimer < 0 {
+                createEnemySpaceship()
+            } else {
+                enemyTimer -= 1
+            }
+        }
+        
+        if enemy.position.y > frame.height { enemy.position.y = 0 }
+        if enemy.position.y < 0 { enemy.position.y = frame.height }
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -177,5 +196,37 @@ class GameScene: SKScene {
         bullet.physicsBody?.affectedByGravity = false
         bullet.physicsBody?.isDynamic = true
         bullet.run(sequence)
+    }
+    
+    func createEnemySpaceship() {
+        guard isEnemyAlive == false else { return }
+        isEnemyAlive = true
+        let startOnLeft = Bool.random()
+        let startY = Double.random(in: 150...1436)
+        
+        // isEnemyBig = score > 40000 ? false : Bool.random()
+        isEnemyBig = Bool.random()
+        
+        enemy.position = startOnLeft ? CGPoint(x: -100, y: startY) : CGPoint(x: 2248, y: startY)
+        enemy.zPosition = 0
+        enemy.size = CGSize(width: isEnemyBig ? 120 : 60, height: isEnemyBig ? 129 : 60)
+        enemy.name = isEnemyBig ? "enemy-large" : "enemy-small"
+        addChild(enemy)
+        
+        enemy.physicsBody = SKPhysicsBody(texture: enemy.texture!, size: enemy.size)
+        enemy.physicsBody?.affectedByGravity = false
+        enemy.physicsBody?.isDynamic = true
+        
+        let firstMove = SKAction.move(to: startOnLeft ? CGPoint(x: 716, y: startY + Double.random(in: -500...500)) : CGPoint(x: 1432, y: Double.random(in: -500...500)), duration: 3)
+        let secondMove = SKAction.move(to: startOnLeft ? CGPoint(x: 1432, y: startY + Double.random(in: -500...500)) : CGPoint(x: 716, y: Double.random(in: -500...500)), duration: 3)
+        let thirdMove = SKAction.move(to: startOnLeft ? CGPoint(x: 2248, y: startY + Double.random(in: -500...500)) : CGPoint(x: -100, y: Double.random(in: -500...500)), duration: 3)
+        let remove = SKAction.run {
+            self.isEnemyAlive = false
+            self.enemyTimer = Double.random(in: 1800...7200)
+        }
+        let sound = SKAction.repeatForever(SKAction.playSoundFileNamed(isEnemyBig ? "saucerBig.wav" : "saucerSmall.wav", waitForCompletion: true))
+        let sequence = SKAction.sequence([firstMove, secondMove, thirdMove, .removeFromParent(), remove])
+        let group = SKAction.group([sound, sequence])
+        enemy.run(group)
     }
 }
