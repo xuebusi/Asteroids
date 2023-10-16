@@ -19,10 +19,12 @@ class GameScene: SKScene {
     private var fire: SKSpriteNode?
     
     // Player Properties
-    private var player = SKSpriteNode(imageNamed: "ship-still")
-    private var isPlayerAlive = false
-    private var isRotatingLeft = false
-    private var isRotatingRight = false
+    var player = SKSpriteNode(imageNamed: "ship-still")
+    var isPlayerAlive = false
+    var isRotatingLeft = false
+    var isRotatingRight = false
+    var isThrustOn = false
+    var isHyperSpacingOn = false
     
     // Control Properties
     private var rotation: CGFloat = 0 {
@@ -30,10 +32,12 @@ class GameScene: SKScene {
             player.zRotation = deg2rad(degrees: rotation)
         }
     }
-    let rotaionFector: CGFloat = 4 // larger number will cause faster rotation
+    let rotaionFactor: CGFloat = 4 // larger number will cause faster rotation
     var xVector: CGFloat = 0
     var yVector: CGFloat = 0
-    var rotationVector: CGFloat = .zero
+    var rotationVector: CGVector = .zero
+    let thrustFactor: CGFloat = 1.0 // larger number will cause faster thrust - 10 is super fast, 0.1 is super slow
+    let thrustSound = SKAction.repeatForever(SKAction.playSoundFileNamed("thrust.wav", waitForCompletion: true))
     
     // MARK: - METHODS
     override func didMove(to view: SKView) {
@@ -43,12 +47,24 @@ class GameScene: SKScene {
     
     override func update(_ currentTime: TimeInterval) {
         if isRotatingLeft {
-            rotation += rotaionFector
+            rotation += rotaionFactor
             if rotation == 360 { rotation = 0 }
         } else if isRotatingRight {
-            rotation -= rotaionFector
-            if rotation < 0 { rotation = 360 - rotaionFector }
+            rotation -= rotaionFactor
+            if rotation < 0 { rotation = 360 - rotaionFactor }
         }
+        
+        if isThrustOn {
+            xVector = sin(player.zRotation) * -thrustFactor
+            yVector = cos(player.zRotation) * thrustFactor
+            rotationVector = CGVector(dx: xVector, dy: yVector)
+            player.physicsBody?.applyImpulse(rotationVector)
+        }
+        
+        if player.position.y > frame.height { player.position.y = 0 }
+        if player.position.y < 0 { player.position.y = frame.height }
+        if player.position.x > frame.width { player.position.x = 0 }
+        if player.position.x < 0 { player.position.x = frame.width }
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -64,6 +80,12 @@ class GameScene: SKScene {
         case "right":
             isRotatingLeft = false
             isRotatingRight = true
+        case "thrust":
+            isThrustOn = true
+            player.texture = SKTexture(imageNamed: "ship-moving")
+            scene?.run(thrustSound, withKey: "thrustSound")
+        case "hyper":
+            animateHyperSpace()
         default:
             return
         }
@@ -82,6 +104,10 @@ class GameScene: SKScene {
         case "right":
             isRotatingLeft = false
             isRotatingRight = false
+        case "thrust":
+            isThrustOn = false
+            player.texture = SKTexture(imageNamed: "ship-still")
+            scene?.removeAction(forKey: "thrustSound")
         default:
             return
         }
@@ -112,5 +138,22 @@ class GameScene: SKScene {
         player.physicsBody?.allowsRotation = false
         
         isPlayerAlive = true
+    }
+    
+    func animateHyperSpace() {
+        let outAnimation: SKAction = SKAction(named: "outAnimation")!
+        let inAnimation: SKAction = SKAction(named: "inAnimation")!
+        let randomX = CGFloat.random(in: 100...1948)
+        let randomY = CGFloat.random(in: 150...1436)
+        let stopShooting = SKAction.run {
+            self.isHyperSpacingOn = true
+        }
+        let startShooting = SKAction.run {
+            self.isHyperSpacingOn = false
+        }
+        let movePlayer = SKAction.move(to: CGPoint(x: randomX, y: randomY), duration: 0)
+        let wait = SKAction.wait(forDuration: 0.25)
+        let animation = SKAction.sequence([stopShooting, outAnimation, wait, movePlayer, wait, inAnimation, startShooting])
+        player.run(animation)
     }
 }
