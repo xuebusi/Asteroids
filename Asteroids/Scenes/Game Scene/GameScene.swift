@@ -18,6 +18,10 @@ class GameScene: SKScene {
     private var thrust: SKSpriteNode?
     private var fire: SKSpriteNode?
     
+    // Game Properties
+    var score: Int = 0
+    var level: Int = 1
+    
     // Player Properties
     var player = SKSpriteNode(imageNamed: "ship-still")
     var isPlayerAlive = false
@@ -31,6 +35,7 @@ class GameScene: SKScene {
     var isEnemyAlive = false
     var isEnemyBig = true
     var enemyTimer: Double = 0
+    var timeOfLastShot: CFTimeInterval = 0
     
     // Control Properties
     private var rotation: CGFloat = 0 {
@@ -79,6 +84,11 @@ class GameScene: SKScene {
                 createEnemySpaceship()
             } else {
                 enemyTimer -= 1
+            }
+        } else {
+            if currentTime - timeOfLastShot > 1.0 {
+                self.timeOfLastShot = currentTime
+                createEnemyBullet()
             }
         }
         
@@ -204,8 +214,7 @@ class GameScene: SKScene {
         let startOnLeft = Bool.random()
         let startY = Double.random(in: 150...1436)
         
-        // isEnemyBig = score > 40000 ? false : Bool.random()
-        isEnemyBig = Bool.random()
+        isEnemyBig = score > 40000 ? false : Bool.random()
         
         enemy.position = startOnLeft ? CGPoint(x: -100, y: startY) : CGPoint(x: 2248, y: startY)
         enemy.zPosition = 0
@@ -228,5 +237,33 @@ class GameScene: SKScene {
         let sequence = SKAction.sequence([firstMove, secondMove, thirdMove, .removeFromParent(), remove])
         let group = SKAction.group([sound, sequence])
         enemy.run(group)
+    }
+    
+    func createEnemyBullet() {
+        guard isEnemyAlive else { return }
+        
+        let enemyBullet = SKShapeNode(ellipseOf: CGSize(width: 3, height: 3))
+        enemyBullet.position = enemy.position
+        enemyBullet.zPosition = 0
+        enemyBullet.name = "enemyBullet"
+        enemyBullet.fillColor = .white
+        enemyBullet.strokeColor = .white
+        addChild(enemyBullet)
+        
+        enemyBullet.physicsBody = SKPhysicsBody(circleOfRadius: 3)
+        enemyBullet.physicsBody?.affectedByGravity = false
+        enemy.physicsBody?.isDynamic = true
+        
+        let bulletXOffset: Double = isEnemyBig ? 1000 : 525 - Double(level * 25)
+        let bulletYOffset: Double = isEnemyBig ? 400 : 210 - Double(level * 10)
+        let targetXLeft = player.position.x - bulletXOffset
+        let targetXRight = player.position.x + bulletXOffset
+        let targetYBottom = player.position.y - bulletYOffset
+        let targetYTop = player.position.y + bulletYOffset
+        let randomX = Double.random(in: targetXLeft...targetXRight)
+        let randomY = Double.random(in: targetYBottom...targetYTop)
+        let move = SKAction.move(to: CGPoint(x: randomX, y: randomY), duration: 0.5)
+        let sequence = SKAction.sequence([move, .removeFromParent()])
+        enemyBullet.run(sequence)
     }
 }
