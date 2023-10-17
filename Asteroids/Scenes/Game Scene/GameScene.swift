@@ -37,6 +37,10 @@ class GameScene: SKScene {
     var enemyTimer: Double = 0
     var timeOfLastShot: CFTimeInterval = 0
     
+    // Asteroid Properties
+    var maxAsteroid: Int = 0
+    var totalAsteroids: Int = 0
+    
     // Control Properties
     private var rotation: CGFloat = 0 {
         didSet {
@@ -56,6 +60,16 @@ class GameScene: SKScene {
         createPlayer(atX: frame.width/2, atY: frame.height/2)
         
         enemyTimer = Double.random(in: 1800...7200) // at 60 FPS, this is equivalent to 30...120 seconds
+        maxAsteroid = level > 4 ? 11 : 2 + (level * 2)
+        
+        for _ in 1...maxAsteroid {
+            let randomX: CGFloat = CGFloat.random(in: 0...2048)
+            let randomY: CGFloat = CGFloat.random(in: 0...1636)
+            let asteroid: Asteroid = Asteroid(imageNamed: "asteroid1")
+            asteroid.createAsteroid(atX: randomX, atY: randomY, withWidth: 240, withHeight: 240, withName: "asteroid-large")
+            addChild(asteroid)
+            totalAsteroids += 1
+        }
     }
     
     override func update(_ currentTime: TimeInterval) {
@@ -94,6 +108,16 @@ class GameScene: SKScene {
         
         if enemy.position.y > frame.height { enemy.position.y = 0 }
         if enemy.position.y < 0 { enemy.position.y = frame.height }
+        
+        for node in self.children {
+            if let anAsteroid: Asteroid = node as? Asteroid {
+                anAsteroid.moveAsteroid()
+                if anAsteroid.position.y > frame.height { anAsteroid.position.y = 0 }
+                if anAsteroid.position.y < 0 { anAsteroid.position.y = frame.height }
+                if anAsteroid.position.x > frame.width { anAsteroid.position.x = 0 }
+                if anAsteroid.position.x < 0 { anAsteroid.position.x = frame.width }
+            }
+        }
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
