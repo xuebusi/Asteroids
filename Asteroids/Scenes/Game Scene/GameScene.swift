@@ -170,6 +170,41 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+    func didBegin(_ contact: SKPhysicsContact) {
+        let firstBody: SKPhysicsBody
+        let secondBody: SKPhysicsBody
+        if contact.bodyA.categoryBitMask < contact.bodyB.categoryBitMask {
+            firstBody = contact.bodyA
+            secondBody = contact.bodyB
+        } else {
+            firstBody = contact.bodyB
+            secondBody = contact.bodyA
+        }
+        
+        guard let firstNode = firstBody.node else { return }
+        guard let secondNode = secondBody.node else { return }
+        
+        if firstNode.name == "asteroid-large" || firstNode.name == "asteroid-medium" || firstNode.name == "asteroid-small" {
+            if secondNode.name == "enemy-large" || secondNode.name == "enemy-small" || secondNode.name == "enemyBullet" {
+                // Asteroid hit enemy || enemy bullet == No points awarded
+                breakAsteroid(node: firstNode, name: firstNode.name!, position: firstNode.position)
+                destroyNode(node: secondNode, name: secondNode.name!)
+            } else if secondNode.name == "player" || secondNode.name == "playerBullet" {
+                // Asteroid hit player || player bullet == Points awarded
+                breakAsteroid(node: firstNode, name: firstNode.name!, position: firstNode.position)
+                destroyNode(node: secondNode, name: secondNode.name!)
+            }
+        } else if firstNode.name == "enemy-large" || firstNode.name == "enemy-small" {
+            // Enemy hit player || player bullet == Points awarded
+            destroyNode(node: firstNode, name: firstNode.name!)
+            destroyNode(node: secondNode, name: secondNode.name!)
+        } else {
+            // Enemy bullet hit player == No points awarded
+            destroyNode(node: firstNode, name: firstNode.name!)
+            destroyNode(node: secondNode, name: secondNode.name!)
+        }
+    }
+    
     // MARK: - NODE METHODS
     private func setupLabelsAndButtons() {
         left = childNode(withName: "left") as? SKSpriteNode
@@ -312,9 +347,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func breakAsteroid(node: SKNode, name: String, position: CGPoint) {
         let sound = SKAction.playSoundFileNamed(name == "asteroid-large" ? "bangLarge.wav" : name == "asteroid-medium" ? "bangMedium.wav" : "bangSmall.wav", waitForCompletion: false)
         let create = SKAction.run {
-            let newAsteroid: Asteroid = Asteroid(imageNamed: "asteroid1")
-            newAsteroid.createAsteroid(atX: position.x, atY: position.y, withWidth: name == "asteroid-large" ? 120 : 60, withHeight: name == "asteroid-large" ? 120 : 60, withName: name == "asteroid-large" ? "asteroid-medium" : "asteroid-small")
-            self.addChild(newAsteroid)
+            for _ in 0...1 {
+                let newAsteroid: Asteroid = Asteroid(imageNamed: "asteroid1")
+                newAsteroid.createAsteroid(atX: position.x, atY: position.y, withWidth: name == "asteroid-large" ? 120 : 60, withHeight: name == "asteroid-large" ? 120 : 60, withName: name == "asteroid-large" ? "asteroid-medium" : "asteroid-small")
+                self.addChild(newAsteroid)
+            }
         }
         let destory = SKAction.run {
             self.destroyNode(node: node, name: name)
@@ -332,6 +369,23 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func destroyNode(node: SKNode, name: String) {
-        
+        if name == "player" {
+            node.physicsBody?.contactTestBitMask = 0
+            let explode = SKAction(named: "explode")!
+            let sequence = SKAction.sequence([explode, .removeFromParent()])
+            node.run(sequence)
+            node.name = ""
+            isPlayerAlive = false
+        } else if name == "enemy-large" || name == "enemy-small" {
+            node.removeFromParent()
+            node.name = ""
+            let sound = SKAction.playSoundFileNamed(name == "enemy-large" ? "bangLarge.wav" : "bangSmall.wav", waitForCompletion: false)
+            isEnemyAlive = false
+            enemyTimer = Double.random(in: 1800...7200)
+            scene?.run(sound)
+        } else {
+            node.removeFromParent()
+            node.name = ""
+        }
     }
 }
