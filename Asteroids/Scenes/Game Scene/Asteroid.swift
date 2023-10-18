@@ -24,6 +24,10 @@ class Asteroid: SKSpriteNode {
         self.physicsBody = SKPhysicsBody(texture: self.texture!, size: self.size)
         self.physicsBody?.affectedByGravity = false
         self.physicsBody?.isDynamic = true
+        
+        self.physicsBody?.categoryBitMask = CollisionCategory.asteroid.rawValue
+        self.physicsBody?.collisionBitMask = CollisionCategory.enemy.rawValue | CollisionCategory.enemyBullet.rawValue | CollisionCategory.player.rawValue | CollisionCategory.playerBullet.rawValue
+        self.physicsBody?.contactTestBitMask = CollisionCategory.enemy.rawValue | CollisionCategory.enemyBullet.rawValue | CollisionCategory.player.rawValue | CollisionCategory.playerBullet.rawValue
     }
     
     func moveAsteroid() {

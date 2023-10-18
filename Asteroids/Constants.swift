@@ -26,3 +26,11 @@ func findDestination(start: CGPoint, distance: CGFloat = 1152, angle: CGFloat) -
     
     return CGPoint(x: start.x + x, y: start.y + y)
 }
+
+enum CollisionCategory: UInt32 {
+    case asteroid = 1
+    case enemy = 2
+    case enemyBullet = 4
+    case player = 8
+    case playerBullet = 16
+}

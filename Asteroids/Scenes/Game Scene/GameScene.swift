@@ -10,7 +10,7 @@
 
 import SpriteKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - PROPERTIES
     private var left: SKSpriteNode?
     private var right: SKSpriteNode?
@@ -56,6 +56,8 @@ class GameScene: SKScene {
     
     // MARK: - METHODS
     override func didMove(to view: SKView) {
+        physicsWorld.contactDelegate = self
+        
         setupLabelsAndButtons()
         createPlayer(atX: frame.width/2, atY: frame.height/2)
         
@@ -192,6 +194,10 @@ class GameScene: SKScene {
         player.physicsBody?.mass = 0.2
         player.physicsBody?.allowsRotation = false
         
+        player.physicsBody?.categoryBitMask = CollisionCategory.player.rawValue
+        player.physicsBody?.collisionBitMask = CollisionCategory.enemy.rawValue | CollisionCategory.enemyBullet.rawValue | CollisionCategory.enemyBullet.rawValue
+        player.physicsBody?.contactTestBitMask = CollisionCategory.enemy.rawValue | CollisionCategory.enemyBullet.rawValue | CollisionCategory.enemyBullet.rawValue
+        
         isPlayerAlive = true
     }
     
@@ -230,6 +236,10 @@ class GameScene: SKScene {
         bullet.physicsBody?.affectedByGravity = false
         bullet.physicsBody?.isDynamic = true
         bullet.run(sequence)
+        
+        bullet.physicsBody?.categoryBitMask = CollisionCategory.playerBullet.rawValue
+        bullet.physicsBody?.collisionBitMask = CollisionCategory.enemy.rawValue | CollisionCategory.enemyBullet.rawValue
+        bullet.physicsBody?.contactTestBitMask = CollisionCategory.enemy.rawValue | CollisionCategory.enemyBullet.rawValue
     }
     
     func createEnemySpaceship() {
@@ -249,6 +259,10 @@ class GameScene: SKScene {
         enemy.physicsBody = SKPhysicsBody(texture: enemy.texture!, size: enemy.size)
         enemy.physicsBody?.affectedByGravity = false
         enemy.physicsBody?.isDynamic = true
+        
+        enemy.physicsBody?.categoryBitMask = CollisionCategory.enemy.rawValue
+        enemy.physicsBody?.collisionBitMask = CollisionCategory.player.rawValue | CollisionCategory.asteroid.rawValue | CollisionCategory.playerBullet.rawValue
+        enemy.physicsBody?.contactTestBitMask = CollisionCategory.player.rawValue | CollisionCategory.asteroid.rawValue | CollisionCategory.playerBullet.rawValue
         
         let firstMove = SKAction.move(to: startOnLeft ? CGPoint(x: 716, y: startY + Double.random(in: -500...500)) : CGPoint(x: 1432, y: Double.random(in: -500...500)), duration: 3)
         let secondMove = SKAction.move(to: startOnLeft ? CGPoint(x: 1432, y: startY + Double.random(in: -500...500)) : CGPoint(x: 716, y: Double.random(in: -500...500)), duration: 3)
@@ -278,6 +292,10 @@ class GameScene: SKScene {
         enemyBullet.physicsBody?.affectedByGravity = false
         enemy.physicsBody?.isDynamic = true
         
+        enemyBullet.physicsBody?.categoryBitMask = CollisionCategory.enemyBullet.rawValue
+        enemyBullet.physicsBody?.collisionBitMask = CollisionCategory.player.rawValue | CollisionCategory.asteroid.rawValue
+        enemyBullet.physicsBody?.contactTestBitMask = CollisionCategory.player.rawValue | CollisionCategory.asteroid.rawValue
+        
         let bulletXOffset: Double = isEnemyBig ? 1000 : 525 - Double(level * 25)
         let bulletYOffset: Double = isEnemyBig ? 400 : 210 - Double(level * 10)
         let targetXLeft = player.position.x - bulletXOffset
@@ -289,5 +307,31 @@ class GameScene: SKScene {
         let move = SKAction.move(to: CGPoint(x: randomX, y: randomY), duration: 0.5)
         let sequence = SKAction.sequence([move, .removeFromParent()])
         enemyBullet.run(sequence)
+    }
+    
+    func breakAsteroid(node: SKNode, name: String, position: CGPoint) {
+        let sound = SKAction.playSoundFileNamed(name == "asteroid-large" ? "bangLarge.wav" : name == "asteroid-medium" ? "bangMedium.wav" : "bangSmall.wav", waitForCompletion: false)
+        let create = SKAction.run {
+            let newAsteroid: Asteroid = Asteroid(imageNamed: "asteroid1")
+            newAsteroid.createAsteroid(atX: position.x, atY: position.y, withWidth: name == "asteroid-large" ? 120 : 60, withHeight: name == "asteroid-large" ? 120 : 60, withName: name == "asteroid-large" ? "asteroid-medium" : "asteroid-small")
+            self.addChild(newAsteroid)
+        }
+        let destory = SKAction.run {
+            self.destroyNode(node: node, name: name)
+        }
+        let group = SKAction.group([sound, destory])
+        let sequence = SKAction.sequence([group, create])
+        
+        if name == "asteroid-large" || name == "asteroid-medium" {
+            scene?.run(sequence)
+            totalAsteroids += 1
+        } else {
+            scene?.run(group)
+            totalAsteroids -= 1
+        }
+    }
+    
+    func destroyNode(node: SKNode, name: String) {
+        
     }
 }
