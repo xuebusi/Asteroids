@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2B2E58982AE3EC5000E45CC5 /* Skia.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C3E1DEA62A20BC9D00CF8104 /* Skia.ttf */; };
 		2B4EE3272AD97316004A4F40 /* saucerSmall.wav in Resources */ = {isa = PBXBuildFile; fileRef = 2B4EE31D2AD97315004A4F40 /* saucerSmall.wav */; };
 		2B4EE3282AD97316004A4F40 /* beat2.wav in Resources */ = {isa = PBXBuildFile; fileRef = 2B4EE31E2AD97315004A4F40 /* beat2.wav */; };
 		2B4EE3292AD97316004A4F40 /* fire.wav in Resources */ = {isa = PBXBuildFile; fileRef = 2B4EE31F2AD97315004A4F40 /* fire.wav */; };
@@ -251,6 +252,7 @@
 				2B4EE32C2AD97316004A4F40 /* bangMedium.wav in Resources */,
 				C3E1DE932A20BBF900CF8104 /* Actions.sks in Resources */,
 				2B4EE3292AD97316004A4F40 /* fire.wav in Resources */,
+				2B2E58982AE3EC5000E45CC5 /* Skia.ttf in Resources */,
 				2B4EE3272AD97316004A4F40 /* saucerSmall.wav in Resources */,
 				C3E1DEAE2A20BEA800CF8104 /* OpeningScene.sks in Resources */,
 				2B4EE3302AD97316004A4F40 /* saucerBig.wav in Resources */,

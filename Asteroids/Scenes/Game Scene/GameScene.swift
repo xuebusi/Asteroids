@@ -18,9 +18,38 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var thrust: SKSpriteNode?
     private var fire: SKSpriteNode?
     
+    private var lblScore: SKLabelNode?
+    private var lblHiScore: SKLabelNode?
+    private var lblGameOver: SKLabelNode?
+    private var lblNextLevel: SKLabelNode?
+    private var lblLives: SKLabelNode?
+    
     // Game Properties
-    var score: Int = 0
+    var score: Int = 0 {
+        didSet {
+            lblScore?.text = String(format: "%05d", score)
+            if score > hiscore { hiscore = score }
+            if score > bonusBase * bonusMultiplier {
+                lblScore?.run(SKAction.repeat(SKAction.playSoundFileNamed("extraShip", waitForCompletion: true), count: 6))
+                bonusMultiplier += 1
+                lives += 1
+            }
+        }
+    }
+    var hiscore: Int = 0 {
+        didSet {
+            lblHiScore?.text = String(format: "%05d", hiscore)
+            UserDefaults.standard.set(hiscore, forKey: userdefaults.hiscore)
+        }
+    }
+    var lives: Int = 0 {
+        didSet {
+            lblLives?.text = lives < 1 ? "000" : String(format: "%03d", lives)
+        }
+    }
     var level: Int = 1
+    let bonusBase: Int = 10000
+    var bonusMultiplier: Int = 1
     
     // Player Properties
     var player = SKSpriteNode(imageNamed: "ship-still")
@@ -54,6 +83,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     let thrustFactor: CGFloat = 1.0 // larger number will cause faster thrust - 10 is super fast, 0.1 is super slow
     let thrustSound = SKAction.repeatForever(SKAction.playSoundFileNamed("thrust.wav", waitForCompletion: true))
     
+    // Background Beat Properties
+    var timeOfLastBeat: CFTimeInterval = 0
+    var beatOffset: Double = 1
+    var totalAsteroidsCreatedThisLevel: Double = 0
+    var totalAsteroidsDestoryedThisLevel: Double = 0
+    
     // MARK: - METHODS
     override func didMove(to view: SKView) {
         physicsWorld.contactDelegate = self
@@ -63,6 +98,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         enemyTimer = Double.random(in: 1800...7200) // at 60 FPS, this is equivalent to 30...120 seconds
         maxAsteroid = level > 4 ? 11 : 2 + (level * 2)
+        totalAsteroidsCreatedThisLevel = Double(maxAsteroid * 7)
         
         for _ in 1...maxAsteroid {
             let randomX: CGFloat = CGFloat.random(in: 0...2048)
@@ -75,6 +111,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     override func update(_ currentTime: TimeInterval) {
+        if currentTime - timeOfLastBeat > beatOffset {
+            lblNextLevel?.run(SKAction.playSoundFileNamed(beatOffset > 0.5 ? "beat1.wav" : "beat2.wav", waitForCompletion: false), withKey: "backgroundBeat")
+            timeOfLastBeat = currentTime
+        }
+        
         if isRotatingLeft {
             rotation += rotaionFactor
             if rotation == 360 { rotation = 0 }
@@ -119,6 +160,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 if anAsteroid.position.x > frame.width { anAsteroid.position.x = 0 }
                 if anAsteroid.position.x < 0 { anAsteroid.position.x = frame.width }
             }
+        }
+        
+        if totalAsteroids == 0 && isEnemyAlive == false && lblNextLevel?.isHidden == true {
+            beatOffset = 1.0
+            createNextLevel()
         }
     }
     
@@ -193,11 +239,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 // Asteroid hit player || player bullet == Points awarded
                 breakAsteroid(node: firstNode, name: firstNode.name!, position: firstNode.position)
                 destroyNode(node: secondNode, name: secondNode.name!)
+                score += firstNode.name == "asteroid-large" ? 20 : firstNode.name == "asteroid-medium" ? 50 : 100
             }
         } else if firstNode.name == "enemy-large" || firstNode.name == "enemy-small" {
             // Enemy hit player || player bullet == Points awarded
             destroyNode(node: firstNode, name: firstNode.name!)
             destroyNode(node: secondNode, name: secondNode.name!)
+            score += firstNode.name == "enemy-large" ? 200 : 1000
         } else {
             // Enemy bullet hit player == No points awarded
             destroyNode(node: firstNode, name: firstNode.name!)
@@ -212,6 +260,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         hyper = childNode(withName: "hyper") as? SKSpriteNode
         thrust = childNode(withName: "thrust") as? SKSpriteNode
         fire = childNode(withName: "fire") as? SKSpriteNode
+        
+        lblScore = self.childNode(withName: "lblScore") as? SKLabelNode
+        lblHiScore = self.childNode(withName: "lblHiScore") as? SKLabelNode
+        lblGameOver = self.childNode(withName: "lblGameOver") as? SKLabelNode
+        lblNextLevel = self.childNode(withName: "lblNextLevel") as? SKLabelNode
+        lblLives = self.childNode(withName: "lblLives") as? SKLabelNode
+        
+        lblGameOver?.isHidden = true
+        lblNextLevel?.isHidden = true
+        
+        score = UserDefaults.standard.integer(forKey: userdefaults.score)
+        hiscore = UserDefaults.standard.integer(forKey: userdefaults.hiscore)
+        lives = UserDefaults.standard.integer(forKey: userdefaults.lives)
+        level = UserDefaults.standard.integer(forKey: userdefaults.level)
     }
     
     func createPlayer(atX: Double, atY: Double) {
@@ -366,6 +428,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             scene?.run(group)
             totalAsteroids -= 1
         }
+        
+        totalAsteroidsDestoryedThisLevel += 1
+        beatOffset = 1 - min(totalAsteroidsDestoryedThisLevel / totalAsteroidsCreatedThisLevel, 0.8)
     }
     
     func destroyNode(node: SKNode, name: String) {
@@ -376,6 +441,22 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             node.run(sequence)
             node.name = ""
             isPlayerAlive = false
+            
+            lives -= 1
+            if lives < 0 {
+                lblGameOver?.isHidden = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    if let openScene = SKScene(fileNamed: "OpeningScene") {
+                        openScene.scaleMode = self.scaleMode
+                        let transition = SKTransition.reveal(with: .right, duration: 1)
+                        self.view?.presentScene(openScene, transition: transition)
+                    }
+                }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                    self.createPlayer(atX: self.frame.width / 2, atY: self.frame.height / 2)
+                }
+            }
         } else if name == "enemy-large" || name == "enemy-small" {
             node.removeFromParent()
             node.name = ""
@@ -386,6 +467,36 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         } else {
             node.removeFromParent()
             node.name = ""
+        }
+    }
+    
+    func createNextLevel() {
+        for node in self.children {
+            if let _: Asteroid = node as? Asteroid {
+                node.removeFromParent()
+            }
+        }
+        
+        level += 1
+        maxAsteroid = level > 4 ? 11 : 2 + (level * 2)
+        totalAsteroidsCreatedThisLevel = Double(maxAsteroid * 7)
+        totalAsteroidsDestoryedThisLevel = 0
+        totalAsteroids = 0
+        enemyTimer = 100000
+        lblNextLevel?.isHidden = false
+        player.removeFromParent()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            self.lblNextLevel?.isHidden = true
+            self.createPlayer(atX: self.frame.width / 2, atY: self.frame.height / 2)
+            self.enemyTimer = Double.random(in: 1800...7200)
+            for _ in 1...self.maxAsteroid {
+                let randomX: CGFloat = CGFloat.random(in: 0...2048)
+                let randomY: CGFloat = CGFloat.random(in: 0...1636)
+                let asteroid: Asteroid = Asteroid(imageNamed: "asteroid1")
+                asteroid.createAsteroid(atX: randomX, atY: randomY, withWidth: 240, withHeight: 240, withName: "asteroid-large")
+                self.addChild(asteroid)
+                self.totalAsteroids += 1
+            }
         }
     }
 }
