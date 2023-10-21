@@ -34,3 +34,10 @@ enum CollisionCategory: UInt32 {
     case player = 8
     case playerBullet = 16
 }
+
+enum userdefaults {
+    static let score = "score"
+    static let hiscore = "hiscore"
+    static let lives = "lives"
+    static let level = "level"
+}
